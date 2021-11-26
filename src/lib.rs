@@ -18,6 +18,7 @@ pub struct TestEnv<'a, L: Ledger> {
     pub users: HashMap<String, User>,
     pub current_user: Option<User>,
     pub packages: HashMap<String, Address>,
+    pub current_package: Option<Address>,
 }
 
 impl<'a, L: Ledger> TestEnv<'a, L> {
@@ -30,13 +31,28 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             executor,
             users,
             current_user: None,
-            packages
+            packages,
+            current_package: None,
         }
     }
 
     pub fn publish_package(&mut self, name: &str, package: &[u8]) -> &mut Self {
         let package = self.executor.publish_package(package);
         self.packages.insert(String::from(name), package);
+
+        self
+    }
+
+    pub fn get_package(&self, name: &str) -> Address {
+        match self.packages.get(name) {
+            Some(&package) => package,
+            None => panic!("No package named {:?} found.", name),
+        }
+    }
+
+    pub fn using_package(&mut self, name: &str) -> &mut Self {
+        let package = self.get_package(name);
+        self.current_package = Some(package);
 
         self
     }
