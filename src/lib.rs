@@ -33,8 +33,11 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         }
     }
 
-    pub fn publish_package(&mut self, package: &[u8]) {
-        self.executor.publish_package(package);
+    pub fn publish_package(&mut self, package: &[u8]) -> &mut Self {
+        let package = self.executor.publish_package(package);
+        self.package = Some(package);
+
+        self
     }
 
     pub fn create_user(&mut self, name: &str) -> User {
