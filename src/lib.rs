@@ -17,25 +17,26 @@ pub struct TestEnv<'a, L: Ledger> {
     pub executor: TransactionExecutor<'a, L>,
     pub users: HashMap<String, User>,
     pub current_user: Option<User>,
-    pub package: Option<Address>,
+    pub packages: HashMap<String, Address>,
 }
 
 impl<'a, L: Ledger> TestEnv<'a, L> {
     pub fn new(ledger: &'a mut L) -> Self {
         let executor = TransactionExecutor::new(ledger, 0, 0);
         let users: HashMap<String, User> = HashMap::new();
+        let packages: HashMap<String, Address> = HashMap::new();
 
         Self {
             executor,
             users,
             current_user: None,
-            package: None,
+            packages
         }
     }
 
-    pub fn publish_package(&mut self, package: &[u8]) -> &mut Self {
+    pub fn publish_package(&mut self, name: &str, package: &[u8]) -> &mut Self {
         let package = self.executor.publish_package(package);
-        self.package = Some(package);
+        self.packages.insert(String::from(name), package);
 
         self
     }
