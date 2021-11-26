@@ -21,17 +21,20 @@ pub struct TestEnv<'a, L: Ledger> {
 }
 
 impl<'a, L: Ledger> TestEnv<'a, L> {
-    pub fn new(ledger: &'a mut L, package: &[u8]) -> Self {
-        let mut executor = TransactionExecutor::new(ledger, 0, 0);
+    pub fn new(ledger: &'a mut L) -> Self {
+        let executor = TransactionExecutor::new(ledger, 0, 0);
         let users: HashMap<String, User> = HashMap::new();
-        let package = executor.publish_package(package);
 
         Self {
             executor,
             users,
             current_user: None,
-            package: Some(package),
+            package: None,
         }
+    }
+
+    pub fn publish_package(&mut self, package: &[u8]) {
+        self.executor.publish_package(package);
     }
 
     pub fn create_user(&mut self, name: &str) -> User {

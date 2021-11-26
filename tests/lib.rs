@@ -6,7 +6,7 @@ use scrypto_unit::*;
 #[test]
 fn test_create_user() {
     let mut ledger = InMemoryLedger::with_bootstrap();
-    let mut test_env = TestEnv::new(&mut ledger, &[]);
+    let mut test_env = TestEnv::new(&mut ledger);
 
     test_env.create_user("alice");
     test_env.create_user("bob");
@@ -21,7 +21,7 @@ fn test_create_user() {
 #[test]
 fn test_get_user() {
     let mut ledger = InMemoryLedger::with_bootstrap();
-    let mut test_env = TestEnv::new(&mut ledger, &[]);
+    let mut test_env = TestEnv::new(&mut ledger);
     test_env.create_user("alice");
     test_env.get_user("alice");
 }
@@ -29,7 +29,7 @@ fn test_get_user() {
 #[test]
 fn test_acting_as() {
     let mut ledger = InMemoryLedger::with_bootstrap();
-    let mut test_env = TestEnv::new(&mut ledger, &[]);
+    let mut test_env = TestEnv::new(&mut ledger);
 
     let user = test_env.create_user("alice");
     test_env.acting_as("alice");
