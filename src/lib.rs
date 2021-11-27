@@ -63,7 +63,11 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
 
         self.users.insert(String::from(name), User { key, account });
 
-        User { key, account }
+        let usr = User { key, account };
+
+        //Set user as default user
+        self.current_user = Some(usr);
+        usr
     }
 
     pub fn get_user(&self, name: &str) -> &User {
@@ -78,5 +82,44 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         self.current_user = Some(*user);
 
         self
+    }
+
+    fn get_current_user(&self) -> User {
+        match self.current_user {
+            Some(user) => user,
+            None => panic!("Fatal error, no user specified aborting"),
+        }
+    }
+
+    ///Creates a token returns a ResourceDef
+    /// # Arguments
+    ///
+    /// * `max_supply` - A decimal that defines the supply
+    ///
+    /// # Examples
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::InMemoryLedger;
+    ///
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// env.create_user("acc1");
+    /// let token = env.create_token(10000.into());
+    /// ```
+    pub fn create_token(&mut self, max_supply: Decimal) -> ResourceDef {
+        let user = self.get_current_user();
+        let receipt = self
+            .executor
+            .run(
+                TransactionBuilder::new(&self.executor)
+                    .new_token_fixed(HashMap::new(), max_supply.into())
+                    .deposit_all_buckets(user.account)
+                    .build(vec![user.key])
+                    .unwrap(),
+                false,
+            )
+            .unwrap();
+
+        return receipt.resource_def(0).unwrap().into();
     }
 }
