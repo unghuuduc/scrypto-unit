@@ -4,7 +4,9 @@ extern crate radix_engine;
 extern crate scrypto;
 
 use radix_engine::ledger::*;
+use radix_engine::model::Auth::NoAuth;
 use radix_engine::transaction::*;
+use radix_engine::utils::*;
 use scrypto::prelude::*;
 
 #[derive(Debug, Copy, Clone)]
@@ -222,7 +224,6 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// );
     /// assert!(receipt_method.success);
     /// ```
-
     pub fn call_method(
         &mut self,
         component: &Address,
@@ -242,4 +243,50 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             )
             .unwrap()
     }
+}
+
+fn get_vault_info(ledger: &InMemoryLedger, vid: Vid) -> (Address, Decimal) {
+    let vault = ledger.get_vault(vid).unwrap();
+    let amount = vault.amount(NoAuth).unwrap();
+    let resource_def_address = vault.resource_def(NoAuth).unwrap();
+
+    (resource_def_address, amount)
+}
+
+/// Returns a HashMap with the addresses of the vaults and their amounts. Works with a component or account.
+/// # Arguments
+///
+/// * `ledger`   - A reference to the InMemoryLedger
+/// * `address`  - The Address of the component
+///
+/// # Examples
+/// ```
+/// use scrypto_unit::*;
+/// use radix_engine::ledger::*;
+/// use scrypto::prelude::*;
+///
+/// let mut ledger = InMemoryLedger::with_bootstrap();
+/// let mut env = TestEnv::new(&mut ledger);
+///
+/// let user = env.create_user("acc1");
+/// // Note env goes out of scope here, that's why we can use the ledger.
+/// // If you want to use env after using the ledger you need
+/// // to reconstruct it again
+/// let vaults = get_account_vaults(&ledger, user.account);  
+///
+/// for (addr, amt) in vaults {
+///     println!("Address: {}, Amount: {}", addr, amt);
+///     if addr == RADIX_TOKEN {
+///         assert!(amt == 1000000.into());
+///     }
+/// }
+/// ```
+pub fn get_account_vaults(ledger: &InMemoryLedger, address: Address) -> HashMap<Address, Decimal> {
+    let mut vids: Vec<Vid> = Vec::new();
+    let component = ledger.get_component(address).unwrap();
+    let state = component.state(NoAuth).unwrap();
+    format_data_with_ledger(&state, ledger, &mut vids).unwrap();
+    vids.drain(..)
+        .map(|vid| get_vault_info(ledger, vid))
+        .collect()
 }
