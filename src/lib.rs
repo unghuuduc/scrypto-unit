@@ -37,8 +37,14 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     }
 
     pub fn publish_package(&mut self, name: &str, package: &[u8]) -> &mut Self {
-        let package = self.executor.publish_package(package);
-        self.packages.insert(String::from(name), package);
+        let package_addr = self.executor.publish_package(package);
+        self.packages.insert(String::from(name), package_addr);
+
+        //If first package set as default
+        match self.current_package {
+            Some(_) => {}
+            None => self.current_package = Some(package_addr),
+        }
 
         self
     }
@@ -65,8 +71,12 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
 
         let usr = User { key, account };
 
-        //Set user as default user
-        self.current_user = Some(usr);
+        //If first user set as default
+        match self.current_user {
+            Some(_) => {}
+            None => self.current_user = Some(usr),
+        }
+
         usr
     }
 
@@ -91,7 +101,14 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         }
     }
 
-    ///Creates a token returns a ResourceDef
+    fn get_current_package(&self) -> Address {
+        match self.current_package {
+            Some(package) => package,
+            None => panic!("Fatal error, no package specified aborting"),
+        }
+    }
+
+    /// Creates a token returns a ResourceDef
     /// # Arguments
     ///
     /// * `max_supply` - A decimal that defines the supply
@@ -121,5 +138,108 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             .unwrap();
 
         return receipt.resource_def(0).unwrap().into();
+    }
+
+    /// Makes a function call and returns a Receipt
+    /// # Arguments
+    ///
+    /// * `package_name`  - The name of the package as named in the blueprint
+    /// * `function_name` - The name of the function to call
+    /// * `params`        - A vector of Strings with the arguments to pass into the function
+    ///
+    /// # Examples
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    ///
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// env.create_user("acc1");
+    /// env.publish_package(
+    ///     "package",
+    ///     include_code!("/home/eye/Develop/radixdlt-scrypto/examples/core/gumball-machine/")
+    /// );
+    /// let receipt = env.call_function("GumballMachine", "new", vec!["0.6".to_owned()]);
+    /// assert!(receipt.success);
+    /// ```
+    pub fn call_function(
+        &mut self,
+        package_name: &str,
+        function_name: &str,
+        params: Vec<String>,
+    ) -> Receipt {
+        let user = self.get_current_user();
+        let package = self.get_current_package();
+        self.executor
+            .run(
+                TransactionBuilder::new(&self.executor)
+                    .call_function(
+                        package,
+                        package_name,
+                        function_name,
+                        params,
+                        Some(user.account),
+                    )
+                    .deposit_all_buckets(user.account)
+                    .build(vec![user.key])
+                    .unwrap(),
+                false,
+            )
+            .unwrap()
+    }
+
+    /// Makes a method call and returns a Receipt
+    /// # Arguments
+    ///
+    /// * `Component`   - A reference to the Address of the component
+    /// * `method_name` - The name of the method
+    /// * `params`      - A vector of Strings with the arguments to pass in the method
+    ///
+    /// # Examples
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    ///
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    ///
+    /// env.create_user("acc1");
+    /// env.publish_package(
+    ///     "package",
+    ///     include_code!("/home/eye/Develop/radixdlt-scrypto/examples/core/gumball-machine/")
+    /// );
+    ///
+    /// let receipt = env.call_function("GumballMachine", "new", vec!["0.6".to_owned()]);
+    /// assert!(receipt.success);
+    /// let component = receipt.component(0).unwrap();
+    ///
+    /// let receipt_method = env.call_method(
+    ///     &component,
+    ///     "buy_gumball",
+    ///     vec![format!("1,{}", RADIX_TOKEN)]
+    /// );
+    /// assert!(receipt_method.success);
+    /// ```
+
+    pub fn call_method(
+        &mut self,
+        component: &Address,
+        method_name: &str,
+        params: Vec<String>,
+    ) -> Receipt {
+        let user = self.get_current_user();
+
+        self.executor
+            .run(
+                TransactionBuilder::new(&self.executor)
+                    .call_method(*component, method_name, params, Some(user.account))
+                    .deposit_all_buckets(user.account)
+                    .build(vec![user.key])
+                    .unwrap(),
+                false,
+            )
+            .unwrap()
     }
 }
