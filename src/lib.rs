@@ -243,50 +243,84 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             )
             .unwrap()
     }
-}
 
-fn get_vault_info(ledger: &InMemoryLedger, vid: Vid) -> (Address, Decimal) {
-    let vault = ledger.get_vault(vid).unwrap();
-    let amount = vault.amount(NoAuth).unwrap();
-    let resource_def_address = vault.resource_def(NoAuth).unwrap();
+    fn get_vault_info(ledger: &L, vid: Vid) -> (Address, Decimal) {
+        let vault = ledger.get_vault(vid).unwrap();
+        let amount = vault.amount(NoAuth).unwrap();
+        let resource_def_address = vault.resource_def(NoAuth).unwrap();
 
-    (resource_def_address, amount)
-}
+        (resource_def_address, amount)
+    }
 
-/// Returns a HashMap with the addresses of the vaults and their amounts. Works with a component or account.
-/// # Arguments
-///
-/// * `ledger`   - A reference to the InMemoryLedger
-/// * `address`  - The Address of the component
-///
-/// # Examples
-/// ```
-/// use scrypto_unit::*;
-/// use radix_engine::ledger::*;
-/// use scrypto::prelude::*;
-///
-/// let mut ledger = InMemoryLedger::with_bootstrap();
-/// let mut env = TestEnv::new(&mut ledger);
-///
-/// let user = env.create_user("acc1");
-/// // Note env goes out of scope here, that's why we can use the ledger.
-/// // If you want to use env after using the ledger you need
-/// // to reconstruct it again
-/// let vaults = get_account_vaults(&ledger, user.account);  
-///
-/// for (addr, amt) in vaults {
-///     println!("Address: {}, Amount: {}", addr, amt);
-///     if addr == RADIX_TOKEN {
-///         assert!(amt == 1000000.into());
-///     }
-/// }
-/// ```
-pub fn get_account_vaults(ledger: &InMemoryLedger, address: Address) -> HashMap<Address, Decimal> {
-    let mut vids: Vec<Vid> = Vec::new();
-    let component = ledger.get_component(address).unwrap();
-    let state = component.state(NoAuth).unwrap();
-    format_data_with_ledger(&state, ledger, &mut vids).unwrap();
-    vids.drain(..)
-        .map(|vid| get_vault_info(ledger, vid))
-        .collect()
+    /// Returns the amount of the resource for the component/account
+    /// # Arguments
+    ///
+    /// * `component`    - The Address of the component that holds the resource
+    /// * `resource_def` - The Address that holds the resource
+    ///
+    /// # Examples
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    ///
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    ///
+    /// let user = env.create_user("acc1");
+    /// let amount = env.get_amount_for_rd(user.account, RADIX_TOKEN);  
+    /// assert!( amount == 1000000.into() );
+    /// ```
+    pub fn get_amount_for_rd(&mut self, component: Address, resource_def: Address) -> Decimal {
+        let ledger = self.executor.ledger();
+        let mut vids: Vec<Vid> = Vec::new();
+        let component = ledger.get_component(component).unwrap();
+        let state = component.state(NoAuth).unwrap();
+        format_data_with_ledger(&state, ledger, &mut vids).unwrap();
+
+        for vid in vids {
+            let (resource_def_address, amount) = TestEnv::get_vault_info(ledger, vid);
+            if resource_def_address == resource_def {
+                return amount;
+            }
+        }
+
+        0.into()
+    }
+
+    /// Returns a HashMap with the addresses of the vaults and their amounts. Works with a component or account.
+    /// # Arguments
+    ///
+    /// * `ledger`   - A reference to the InMemoryLedger
+    /// * `address`  - The Address of the component
+    ///
+    /// # Examples
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    ///
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    ///
+    /// let user = env.create_user("acc1");
+    /// let vaults = env.get_account_vaults(user.account);  
+    ///
+    /// for (addr, amt) in vaults {
+    ///     println!("Address: {}, Amount: {}", addr, amt);
+    ///     if addr == RADIX_TOKEN {
+    ///         assert!(amt == 1000000.into());
+    ///     }
+    /// }
+    /// ```
+    pub fn get_account_vaults(&mut self, address: Address) -> HashMap<Address, Decimal> {
+        let mut vids: Vec<Vid> = Vec::new();
+        let ledger = self.executor.ledger();
+        let component = ledger.get_component(address).unwrap();
+        let state = component.state(NoAuth).unwrap();
+        format_data_with_ledger(&state, ledger, &mut vids).unwrap();
+        vids.drain(..)
+            .map(|vid| TestEnv::get_vault_info(ledger, vid))
+            .collect()
+    }
 }
