@@ -1,3 +1,9 @@
+//! # Scrypto Unit
+//! 
+//! `scrypto_unit` is a lightweight testing framework for Scrypto. 
+//! 
+//! This crate contains a collection of useful methods that you can
+//! leverage when testing your components.
 #![allow(dead_code)]
 
 extern crate radix_engine;
@@ -10,20 +16,50 @@ use radix_engine::utils::*;
 use scrypto::prelude::*;
 
 #[derive(Debug, Copy, Clone)]
+/// The user account.
 pub struct User {
+    /// The user's public key.
     pub key: Address,
+    /// The user's account address.
     pub account: Address,
 }
-
+/// Represents a test environment.
 pub struct TestEnv<'a, L: Ledger> {
+    /// The transaction executioner.
     pub executor: TransactionExecutor<'a, L>,
+    /// The users of the test environment.
     pub users: HashMap<String, User>,
+    /// The current user of the test environment.
     pub current_user: Option<User>,
+    /// The test environment packages.
     pub packages: HashMap<String, Address>,
+    /// The current package of the test environment.
     pub current_package: Option<Address>,
 }
 
 impl<'a, L: Ledger> TestEnv<'a, L> {
+    /// Returns a test environment instance with the following fields:
+    /// 
+    /// * `executor` - The transaction executioner.
+    /// * `users` - The users of the test environment.
+    /// * `current_user` - The current user of the test environment.
+    /// * `packages` - The test environment packages.
+    /// * `current_package` - The current package of the test environment.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `ledger` - The transaction execution ledger.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    /// 
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// ```
     pub fn new(ledger: &'a mut L) -> Self {
         let executor = TransactionExecutor::new(ledger, 0, 0);
         let users: HashMap<String, User> = HashMap::new();
@@ -38,6 +74,25 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         }
     }
 
+    /// Publishes a given package to the transaction execution ledger.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `name` - The name of the package.
+    /// * `package` - The package as a binary array.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    /// 
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// 
+    /// env.publish_package(String::from("my package"), include_code!());
+    /// ```
     pub fn publish_package(&mut self, name: &str, package: &[u8]) -> &mut Self {
         let package_addr = self.executor.publish_package(package);
         self.packages.insert(String::from(name), package_addr);
@@ -51,6 +106,26 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         self
     }
 
+    /// Retrieve a test environment package by name.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `name` - The name of the package.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    /// 
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// 
+    /// env.publish_package(String::from("my package"), include_code!());
+    /// 
+    /// let package = env.get_package("my package");
+    /// ```
     pub fn get_package(&self, name: &str) -> Address {
         match self.packages.get(name) {
             Some(&package) => package,
@@ -58,6 +133,26 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         }
     }
 
+    /// Sets the current package of the test environment.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `name` - The name of the package.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    /// 
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// 
+    /// env.publish_package(String::from("my package"), include_code!());
+    /// 
+    /// env.using_package("my package");
+    /// ```
     pub fn using_package(&mut self, name: &str) -> &mut Self {
         let package = self.get_package(name);
         self.current_package = Some(package);
@@ -65,6 +160,24 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         self
     }
 
+    /// Create a test user.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `name` - The name of the user.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    /// 
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// 
+    /// env.create_user(String::from("test user"));
+    /// ```
     pub fn create_user(&mut self, name: &str) -> User {
         let key = self.executor.new_public_key();
         let account = self.executor.new_account(key);
@@ -82,6 +195,24 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         usr
     }
 
+    /// Retrieve a test user by name.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `name` - The name of the user.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    /// 
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// 
+    /// let user = env.get_user(String::from("test user"));
+    /// ```
     pub fn get_user(&self, name: &str) -> &User {
         match self.users.get(name) {
             Some(user) => user,
@@ -89,6 +220,26 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         }
     }
 
+    /// Set the current user of the test environment.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `name` - The name of the user.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    /// 
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// 
+    /// ... after creating a user.
+    /// 
+    /// env.acting_as(String::from("test user"));
+    /// ```
     pub fn acting_as(&mut self, name: &str) -> &mut Self {
         let user = self.get_user(name);
         self.current_user = Some(*user);
@@ -96,6 +247,22 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         self
     }
 
+    /// Returns the current test user.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    /// 
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// 
+    /// ... after creating a user.
+    /// 
+    /// let current_user = env.get_current_user();
+    /// ```
     fn get_current_user(&self) -> User {
         match self.current_user {
             Some(user) => user,
@@ -103,6 +270,22 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
         }
     }
 
+    /// Returns the current test package.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::*;
+    /// use scrypto::prelude::*;
+    /// 
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// 
+    /// ... after publishing one or more packages.
+    /// 
+    /// let current_package = env.get_current_package();
+    /// ```
     fn get_current_package(&self) -> Address {
         match self.current_package {
             Some(package) => package,
