@@ -315,6 +315,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             .run(
                 TransactionBuilder::new(&self.executor)
                     .new_token_fixed(HashMap::new(), max_supply.into())
+                    .drop_all_bucket_refs()
                     .deposit_all_buckets(user.account)
                     .build(vec![user.key])
                     .unwrap(),
@@ -366,6 +367,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
                         params,
                         Some(user.account),
                     )
+                    .drop_all_bucket_refs()
                     .deposit_all_buckets(user.account)
                     .build(vec![user.key])
                     .unwrap(),
@@ -419,6 +421,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             .run(
                 TransactionBuilder::new(&self.executor)
                     .call_method(*component, method_name, params, Some(user.account))
+                    .drop_all_bucket_refs()
                     .deposit_all_buckets(user.account)
                     .build(vec![user.key])
                     .unwrap(),
