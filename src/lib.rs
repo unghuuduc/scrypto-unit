@@ -509,4 +509,41 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             .map(|vid| TestEnv::get_vault_info(ledger, vid))
             .collect()
     }
+
+    /// Transfers some resource between users
+    /// # Arguments
+    ///
+    /// * `amount` - A decimal that defines the amount to transfer
+    /// * `resource_def` - The resource_def for the resource to transfer
+    /// * `to_user` - the user receiving the amount of resource
+    ///
+    /// # Examples
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::InMemoryLedger;
+    ///
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// env.create_user("user1");
+    /// let token = env.create_token(10000.into());
+    /// let user2 = env.create_user("user2");
+    /// env.transfer_resource(10.into(), &token, &user2);
+    /// ```
+    pub fn transfer_resource(&mut self, amount: Decimal, resource_def: &ResourceDef, to_user: &User) -> Receipt {
+        let user = self.get_current_user();
+        let receipt = self
+            .executor
+            .run(
+                TransactionBuilder::new(&self.executor)
+                    .withdraw_from_account(amount, resource_def.address(), user.account)
+                    .drop_all_bucket_refs()
+                    .deposit_all_buckets(to_user.account)
+                    .build(vec![user.key])
+                    .unwrap(),
+                false,
+            )
+            .unwrap();
+
+        receipt
+    }
 }
