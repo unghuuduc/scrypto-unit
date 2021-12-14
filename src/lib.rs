@@ -16,7 +16,7 @@ use radix_engine::utils::*;
 use scrypto::prelude::*;
 use sbor::Decode;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 /// The user account.
 pub struct User {
     /// The user's public key.
@@ -92,7 +92,10 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
-    /// env.publish_package(String::from("my package"), include_code!());
+    /// env.publish_package(
+    ///     "package",
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+    /// );
     /// ```
     pub fn publish_package(&mut self, name: &str, package: &[u8]) -> &mut Self {
         let package_addr = self.executor.publish_package(package);
@@ -123,9 +126,12 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
-    /// env.publish_package(String::from("my package"), include_code!());
+    /// env.publish_package(
+    ///     "package",
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+    /// );
     ///
-    /// let package = env.get_package("my package");
+    /// let package = env.get_package("package");
     /// ```
     pub fn get_package(&self, name: &str) -> Address {
         match self.packages.get(name) {
@@ -150,9 +156,12 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
-    /// env.publish_package(String::from("my package"), include_code!());
+    /// env.publish_package(
+    ///     "package",
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+    /// );
     ///
-    /// env.using_package("my package");
+    /// env.using_package("package");
     /// ```
     pub fn using_package(&mut self, name: &str) -> &mut Self {
         let package = self.get_package(name);
@@ -177,7 +186,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
-    /// env.create_user(String::from("test user"));
+    /// env.create_user("test user");
     /// ```
     pub fn create_user(&mut self, name: &str) -> User {
         let key = self.executor.new_public_key();
@@ -211,8 +220,10 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
+    /// 
+    /// env.create_user("test user");
     ///
-    /// let user = env.get_user(String::from("test user"));
+    /// let user = env.get_user("test user");
     /// ```
     pub fn get_user(&self, name: &str) -> &User {
         match self.users.get(name) {
@@ -237,9 +248,11 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
-    /// ... after creating a user.
+    /// env.create_user("test user");
     ///
-    /// env.acting_as(String::from("test user"));
+    /// env.acting_as("test user");
+    /// 
+    /// assert_eq!(env.get_current_user(), *env.get_user("test user"))
     /// ```
     pub fn acting_as(&mut self, name: &str) -> &mut Self {
         let user = self.get_user(name);
@@ -259,12 +272,14 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
-    ///
-    /// ... after creating a user.
-    ///
+    /// 
+    /// let user = env.create_user("acc1");
+    /// 
     /// let current_user = env.get_current_user();
+    /// 
+    /// assert_eq!(user, current_user);
     /// ```
-    fn get_current_user(&self) -> User {
+    pub fn get_current_user(&self) -> User {
         match self.current_user {
             Some(user) => user,
             None => panic!("Fatal error, no user specified aborting"),
@@ -283,11 +298,14 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
-    /// ... after publishing one or more packages.
+    /// env.publish_package(
+    ///     "package",
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+    /// );
     ///
     /// let current_package = env.get_current_package();
     /// ```
-    fn get_current_package(&self) -> Address {
+    pub fn get_current_package(&self) -> Address {
         match self.current_package {
             Some(package) => package,
             None => panic!("Fatal error, no package specified aborting"),
@@ -345,7 +363,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// env.create_user("acc1");
     /// env.publish_package(
     ///     "package",
-    ///     include_code!("/home/eye/Develop/radixdlt-scrypto/examples/core/gumball-machine/")
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
     /// );
     /// let receipt = env.call_function("GumballMachine", "new", vec!["0.6".to_owned()]);
     /// assert!(receipt.success);
@@ -396,7 +414,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// env.create_user("acc1");
     /// env.publish_package(
     ///     "package",
-    ///     include_code!("/home/eye/Develop/radixdlt-scrypto/examples/core/gumball-machine/")
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
     /// );
     ///
     /// let receipt = env.call_function("GumballMachine", "new", vec!["0.6".to_owned()]);
@@ -570,10 +588,14 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
 ///
 /// env.publish_package(
 ///     "package",
-///     include_code!()
+///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
 /// );
-/// const BLUEPRINT: &str = "MyBlueprint";
-/// let receipt = env.call_function(BLUEPRINT, "new", vec![]);
+/// 
+/// env.create_user("test user");
+/// env.acting_as("test user");
+/// 
+/// const BLUEPRINT: &str = "GumballMachine";
+/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["0.6".to_owned()]);
 /// assert!(receipt.success);
 /// let ret: Component = return_of_call_function(&mut receipt, BLUEPRINT);
 /// ```
