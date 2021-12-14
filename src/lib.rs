@@ -351,7 +351,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// ```
     pub fn call_function(
         &mut self,
-        package_name: &str,
+        blueprint_name: &str,
         function_name: &str,
         params: Vec<String>,
     ) -> Receipt {
@@ -362,7 +362,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
                 TransactionBuilder::new(&self.executor)
                     .call_function(
                         package,
-                        package_name,
+                        blueprint_name,
                         function_name,
                         params,
                         Some(user.account),
