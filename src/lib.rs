@@ -1,7 +1,7 @@
 //! # Scrypto Unit
-//! 
-//! `scrypto_unit` is a lightweight testing framework for Scrypto. 
-//! 
+//!
+//! `scrypto_unit` is a lightweight testing framework for Scrypto.
+//!
 //! This crate contains a collection of useful methods that you can
 //! leverage when testing your components.
 #![allow(dead_code)]
@@ -14,8 +14,9 @@ use radix_engine::model::Auth::NoAuth;
 use radix_engine::transaction::*;
 use radix_engine::utils::*;
 use scrypto::prelude::*;
+use sbor::Decode;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 /// The user account.
 pub struct User {
     /// The user's public key.
@@ -39,24 +40,24 @@ pub struct TestEnv<'a, L: Ledger> {
 
 impl<'a, L: Ledger> TestEnv<'a, L> {
     /// Returns a test environment instance with the following fields:
-    /// 
+    ///
     /// * `executor` - The transaction executioner.
     /// * `users` - The users of the test environment.
     /// * `current_user` - The current user of the test environment.
     /// * `packages` - The test environment packages.
     /// * `current_package` - The current package of the test environment.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `ledger` - The transaction execution ledger.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
-    /// 
+    ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// ```
@@ -75,23 +76,26 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     }
 
     /// Publishes a given package to the transaction execution ledger.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `name` - The name of the package.
     /// * `package` - The package as a binary array.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
-    /// 
+    ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
-    /// 
-    /// env.publish_package(String::from("my package"), include_code!());
+    ///
+    /// env.publish_package(
+    ///     "package",
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+    /// );
     /// ```
     pub fn publish_package(&mut self, name: &str, package: &[u8]) -> &mut Self {
         let package_addr = self.executor.publish_package(package);
@@ -107,24 +111,27 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     }
 
     /// Retrieve a test environment package by name.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `name` - The name of the package.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
-    /// 
+    ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
-    /// 
-    /// env.publish_package(String::from("my package"), include_code!());
-    /// 
-    /// let package = env.get_package("my package");
+    ///
+    /// env.publish_package(
+    ///     "package",
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+    /// );
+    ///
+    /// let package = env.get_package("package");
     /// ```
     pub fn get_package(&self, name: &str) -> Address {
         match self.packages.get(name) {
@@ -134,24 +141,27 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     }
 
     /// Sets the current package of the test environment.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `name` - The name of the package.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
-    /// 
+    ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
-    /// 
-    /// env.publish_package(String::from("my package"), include_code!());
-    /// 
-    /// env.using_package("my package");
+    ///
+    /// env.publish_package(
+    ///     "package",
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+    /// );
+    ///
+    /// env.using_package("package");
     /// ```
     pub fn using_package(&mut self, name: &str) -> &mut Self {
         let package = self.get_package(name);
@@ -161,22 +171,22 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     }
 
     /// Create a test user.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `name` - The name of the user.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
-    /// 
+    ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
-    /// 
-    /// env.create_user(String::from("test user"));
+    ///
+    /// env.create_user("test user");
     /// ```
     pub fn create_user(&mut self, name: &str) -> User {
         let key = self.executor.new_public_key();
@@ -196,22 +206,24 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     }
 
     /// Retrieve a test user by name.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `name` - The name of the user.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
-    /// 
+    ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// 
-    /// let user = env.get_user(String::from("test user"));
+    /// env.create_user("test user");
+    ///
+    /// let user = env.get_user("test user");
     /// ```
     pub fn get_user(&self, name: &str) -> &User {
         match self.users.get(name) {
@@ -221,24 +233,26 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     }
 
     /// Set the current user of the test environment.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `name` - The name of the user.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
-    /// 
+    ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
+    ///
+    /// env.create_user("test user");
+    ///
+    /// env.acting_as("test user");
     /// 
-    /// ... after creating a user.
-    /// 
-    /// env.acting_as(String::from("test user"));
+    /// assert_eq!(env.get_current_user(), *env.get_user("test user"))
     /// ```
     pub fn acting_as(&mut self, name: &str) -> &mut Self {
         let user = self.get_user(name);
@@ -248,22 +262,24 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     }
 
     /// Returns the current test user.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
-    /// 
+    ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// 
-    /// ... after creating a user.
+    /// let user = env.create_user("acc1");
     /// 
     /// let current_user = env.get_current_user();
+    /// 
+    /// assert_eq!(user, current_user);
     /// ```
-    fn get_current_user(&self) -> User {
+    pub fn get_current_user(&self) -> User {
         match self.current_user {
             Some(user) => user,
             None => panic!("Fatal error, no user specified aborting"),
@@ -271,22 +287,25 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     }
 
     /// Returns the current test package.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
-    /// 
+    ///
     /// let mut ledger = InMemoryLedger::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
-    /// 
-    /// ... after publishing one or more packages.
-    /// 
+    ///
+    /// env.publish_package(
+    ///     "package",
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+    /// );
+    ///
     /// let current_package = env.get_current_package();
     /// ```
-    fn get_current_package(&self) -> Address {
+    pub fn get_current_package(&self) -> Address {
         match self.current_package {
             Some(package) => package,
             None => panic!("Fatal error, no package specified aborting"),
@@ -315,6 +334,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             .run(
                 TransactionBuilder::new(&self.executor)
                     .new_token_fixed(HashMap::new(), max_supply.into())
+                    .drop_all_bucket_refs()
                     .deposit_all_buckets(user.account)
                     .build(vec![user.key])
                     .unwrap(),
@@ -343,14 +363,14 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// env.create_user("acc1");
     /// env.publish_package(
     ///     "package",
-    ///     include_code!("/home/eye/Develop/radixdlt-scrypto/examples/core/gumball-machine/")
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
     /// );
     /// let receipt = env.call_function("GumballMachine", "new", vec!["0.6".to_owned()]);
     /// assert!(receipt.success);
     /// ```
     pub fn call_function(
         &mut self,
-        package_name: &str,
+        blueprint_name: &str,
         function_name: &str,
         params: Vec<String>,
     ) -> Receipt {
@@ -361,11 +381,12 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
                 TransactionBuilder::new(&self.executor)
                     .call_function(
                         package,
-                        package_name,
+                        blueprint_name,
                         function_name,
                         params,
                         Some(user.account),
                     )
+                    .drop_all_bucket_refs()
                     .deposit_all_buckets(user.account)
                     .build(vec![user.key])
                     .unwrap(),
@@ -393,7 +414,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// env.create_user("acc1");
     /// env.publish_package(
     ///     "package",
-    ///     include_code!("/home/eye/Develop/radixdlt-scrypto/examples/core/gumball-machine/")
+    ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
     /// );
     ///
     /// let receipt = env.call_function("GumballMachine", "new", vec!["0.6".to_owned()]);
@@ -419,6 +440,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             .run(
                 TransactionBuilder::new(&self.executor)
                     .call_method(*component, method_name, params, Some(user.account))
+                    .drop_all_bucket_refs()
                     .deposit_all_buckets(user.account)
                     .build(vec![user.key])
                     .unwrap(),
@@ -506,4 +528,79 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             .map(|vid| TestEnv::get_vault_info(ledger, vid))
             .collect()
     }
+
+    /// Transfers some resource between users
+    /// # Arguments
+    ///
+    /// * `amount` - A decimal that defines the amount to transfer
+    /// * `resource_def` - The resource_def for the resource to transfer
+    /// * `to_user` - the user receiving the amount of resource
+    ///
+    /// # Examples
+    /// ```
+    /// use scrypto_unit::*;
+    /// use radix_engine::ledger::InMemoryLedger;
+    ///
+    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut env = TestEnv::new(&mut ledger);
+    /// env.create_user("user1");
+    /// let token = env.create_token(10000.into());
+    /// let user2 = env.create_user("user2");
+    /// env.transfer_resource(10.into(), &token, &user2);
+    /// ```
+    pub fn transfer_resource(&mut self, amount: Decimal, resource_def: &ResourceDef, to_user: &User) -> Receipt {
+        let user = self.get_current_user();
+        let receipt = self
+            .executor
+            .run(
+                TransactionBuilder::new(&self.executor)
+                    .withdraw_from_account(amount, resource_def.address(), user.account)
+                    .drop_all_bucket_refs()
+                    .deposit_all_buckets(to_user.account)
+                    .build(vec![user.key])
+                    .unwrap(),
+                false,
+            )
+            .unwrap();
+
+        receipt
+    }
+
+}
+
+/// Decodes the return value from a blueprint function within a transaction from the receipt
+/// # Arguments
+///
+/// * `receipt`  - The name of the package as named in the blueprint
+/// * `blueprint_name` - The name of the blueprint to search for the matching Instruction::CallFunction
+/// 
+/// NOTE: a custom built transaction may have more than one matching call.  This convenience
+///       function may not work in such cases.
+///
+/// # Examples
+/// ```
+/// use scrypto_unit::*;
+/// use radix_engine::ledger::*;
+/// use scrypto::prelude::*;
+///
+/// let mut ledger = InMemoryLedger::with_bootstrap();
+/// let mut env = TestEnv::new(&mut ledger);
+///
+/// env.publish_package(
+///     "package",
+///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+/// );
+/// 
+/// env.create_user("test user");
+/// env.acting_as("test user");
+/// 
+/// const BLUEPRINT: &str = "GumballMachine";
+/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["0.6".to_owned()]);
+/// assert!(receipt.success);
+/// let ret: Component = return_of_call_function(&mut receipt, BLUEPRINT);
+/// ```
+pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, blueprint_name: &str) -> T {
+    let instruction_index = receipt.transaction.instructions.iter().position(|i| match i { Instruction::CallFunction { ref blueprint, .. } if blueprint == blueprint_name => true, _ => false }).unwrap();
+    let encoded = receipt.results.swap_remove(instruction_index).unwrap().unwrap().encoded;
+    scrypto_decode(&encoded).unwrap()
 }
