@@ -14,6 +14,7 @@ use radix_engine::model::Auth::NoAuth;
 use radix_engine::transaction::*;
 use radix_engine::utils::*;
 use scrypto::prelude::*;
+use sbor::Decode;
 
 #[derive(Debug, Copy, Clone)]
 /// The user account.
@@ -546,4 +547,38 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
 
         receipt
     }
+
+}
+
+/// Decodes the return value from a blueprint function within a transaction from the receipt
+/// # Arguments
+///
+/// * `receipt`  - The name of the package as named in the blueprint
+/// * `blueprint_name` - The name of the blueprint to search for the matching Instruction::CallFunction
+/// 
+/// NOTE: a custom built transaction may have more than one matching call.  This convenience
+///       function may not work in such cases.
+///
+/// # Examples
+/// ```
+/// use scrypto_unit::*;
+/// use radix_engine::ledger::*;
+/// use scrypto::prelude::*;
+///
+/// let mut ledger = InMemoryLedger::with_bootstrap();
+/// let mut env = TestEnv::new(&mut ledger);
+///
+/// env.publish_package(
+///     "package",
+///     include_code!()
+/// );
+/// const BLUEPRINT: &str = "MyBlueprint";
+/// let receipt = env.call_function(BLUEPRINT, "new", vec![]);
+/// assert!(receipt.success);
+/// let ret: Component = return_of_call_function(&mut receipt, BLUEPRINT);
+/// ```
+pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, blueprint_name: &str) -> T {
+    let instruction_index = receipt.transaction.instructions.iter().position(|i| match i { Instruction::CallFunction { ref blueprint, .. } if blueprint == blueprint_name => true, _ => false }).unwrap();
+    let encoded = receipt.results.swap_remove(instruction_index).unwrap().unwrap().encoded;
+    scrypto_decode(&encoded).unwrap()
 }

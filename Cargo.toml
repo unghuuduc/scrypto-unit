@@ -7,4 +7,5 @@ edition = "2018"
 
 [dependencies]
 scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto" }
+sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto" }
 radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto" }
