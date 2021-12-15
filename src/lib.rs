@@ -444,7 +444,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
                     .deposit_all_buckets(user.account)
                     .build(vec![user.key])
                     .unwrap(),
-                false,
+                true,
             )
             .unwrap()
     }
@@ -601,6 +601,47 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
 /// ```
 pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, blueprint_name: &str) -> T {
     let instruction_index = receipt.transaction.instructions.iter().position(|i| match i { Instruction::CallFunction { ref blueprint, .. } if blueprint == blueprint_name => true, _ => false }).unwrap();
+    let encoded = receipt.results.swap_remove(instruction_index).unwrap().unwrap().encoded;
+    scrypto_decode(&encoded).unwrap()
+}
+
+/// Decodes the return value from a component method call within a transaction from the receipt
+/// # Arguments
+///
+/// * `receipt`  - The name of the package as named in the blueprint
+/// * `method_name` - The name of the method to search for the matching Instruction::CallMethod
+/// 
+/// NOTE: a custom built transaction may have more than one matching call.  This convenience
+///       function may not work in such cases.
+///
+/// # Examples
+/// ```
+/// use scrypto_unit::*;
+/// use radix_engine::ledger::*;
+/// use scrypto::prelude::*;
+///
+/// let mut ledger = InMemoryLedger::with_bootstrap();
+/// let mut env = TestEnv::new(&mut ledger);
+///
+/// env.publish_package(
+///     "package",
+///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+/// );
+/// 
+/// env.create_user("test user");
+/// env.acting_as("test user");
+/// 
+/// const BLUEPRINT: &str = "GumballMachine";
+/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["0.6".to_owned()]);
+/// assert!(receipt.success);
+/// let component: Component = return_of_call_function(&mut receipt, BLUEPRINT);
+
+/// let mut receipt = env.call_method(&component.address(), "get_price", vec![]);
+/// assert!(receipt.success);
+/// let ret: Decimal = return_of_call_method(&mut receipt, "get_price");
+/// ```
+pub fn return_of_call_method<T: Decode>(receipt: &mut Receipt, method_name: &str) -> T {
+    let instruction_index = receipt.transaction.instructions.iter().position(|i| match i { Instruction::CallMethod { ref method, .. } if method == method_name => true, _ => false }).unwrap();
     let encoded = receipt.results.swap_remove(instruction_index).unwrap().unwrap().encoded;
     scrypto_decode(&encoded).unwrap()
 }
