@@ -84,7 +84,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
@@ -94,7 +94,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///
     /// env.publish_package(
     ///     "package",
-    ///     include_code!("/path/to/package_dir", "lib_name")
+    ///     include_code!("../tests/assets/hello-world", "hello_world")
     /// );
     /// ```
     pub fn publish_package(&mut self, name: &str, package: &[u8]) -> &mut Self {
@@ -118,7 +118,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
@@ -128,7 +128,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///
     /// env.publish_package(
     ///     "package",
-    ///     include_code!("/path/to/package_dir", "lib_name")
+    ///     include_code!("../tests/assets/hello-world", "hello_world")
     /// );
     ///
     /// let package = env.get_package("package");
@@ -148,7 +148,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
@@ -158,7 +158,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///
     /// env.publish_package(
     ///     "package",
-    ///     include_code!("/path/to/package_dir", "lib_name")
+    ///     include_code!("../tests/assets/hello-world", "hello_world")
     /// );
     ///
     /// env.using_package("package");
@@ -290,7 +290,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
@@ -300,7 +300,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///
     /// env.publish_package(
     ///     "package",
-    ///     include_code!("/path/to/package_dir", "lib_name")
+    ///     include_code!("../tests/assets/hello-world", "hello_world")
     /// );
     ///
     /// let current_package = env.get_current_package();
@@ -353,7 +353,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// * `params`        - A vector of Strings with the arguments to pass into the function
     ///
     /// # Examples
-    /// ```ignore
+    /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
@@ -363,9 +363,9 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// env.create_user("acc1");
     /// env.publish_package(
     ///     "package",
-    ///     include_code!("/path/to/package_dir", "lib_name")
+    ///     include_code!("../tests/assets/hello-world", "hello_world")
     /// );
-    /// let receipt = env.call_function("GumballMachine", "new", vec!["0.6".to_owned()]);
+    /// let receipt = env.call_function("Hello", "new", vec!["1".to_owned()]);
     /// assert!(receipt.success);
     /// ```
     pub fn call_function(
@@ -403,7 +403,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// * `params`      - A vector of Strings with the arguments to pass in the method
     ///
     /// # Examples
-    /// ```ignore
+    /// ```
     /// use scrypto_unit::*;
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
@@ -414,17 +414,17 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// env.create_user("acc1");
     /// env.publish_package(
     ///     "package",
-    ///     include_code!("/path/to/package_dir", "lib_name")
+    ///     include_code!("../tests/assets/hello-world", "hello_world")
     /// );
     ///
-    /// let receipt = env.call_function("GumballMachine", "new", vec!["0.6".to_owned()]);
+    /// let receipt = env.call_function("Hello", "new", vec!["1".to_owned()]);
     /// assert!(receipt.success);
     /// let component = receipt.component(0).unwrap();
     ///
     /// let receipt_method = env.call_method(
     ///     &component,
-    ///     "buy_gumball",
-    ///     vec![format!("1,{}", RADIX_TOKEN)]
+    ///     "update_state",
+    ///     vec!["2".to_owned()]
     /// );
     /// assert!(receipt_method.success);
     /// ```
@@ -588,7 +588,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
 ///       function may not work in such cases.
 ///
 /// # Examples
-/// ```ignore
+/// ```
 /// use scrypto_unit::*;
 /// use radix_engine::ledger::*;
 /// use scrypto::prelude::*;
@@ -598,14 +598,14 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
 ///
 /// env.publish_package(
 ///     "package",
-///     include_code!("/path/to/package_dir", "lib_name")
+///     include_code!("../tests/assets/hello-world", "hello_world")
 /// );
 ///
 /// env.create_user("test user");
 /// env.acting_as("test user");
 ///
-/// const BLUEPRINT: &str = "GumballMachine";
-/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["0.6".to_owned()]);
+/// const BLUEPRINT: &str = "Hello";
+/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["1".to_owned()]);
 /// assert!(receipt.success);
 /// let ret: Component = return_of_call_function(&mut receipt, BLUEPRINT);
 /// ```
