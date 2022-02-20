@@ -635,7 +635,7 @@ pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprin
 ///
 /// * `receipt`  - The name of the package as named in the blueprint
 /// * `method_name` - The name of the method to search for the matching Instruction::CallMethod
-/// 
+///
 /// NOTE: a custom built transaction may have more than one matching call.  This convenience
 ///       function may not work in such cases.
 ///
@@ -652,10 +652,10 @@ pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprin
 ///     "package",
 ///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
 /// );
-/// 
+///
 /// env.create_user("test user");
 /// env.acting_as("test user");
-/// 
+///
 /// const BLUEPRINT: &str = "GumballMachine";
 /// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["0.6".to_owned()]);
 /// assert!(receipt.success);
@@ -666,7 +666,20 @@ pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprin
 /// let ret: Decimal = return_of_call_method(&mut receipt, "get_price");
 /// ```
 pub fn return_of_call_method<T: Decode>(receipt: &mut Receipt, method_name: &str) -> T {
-    let instruction_index = receipt.transaction.instructions.iter().position(|i| match i { Instruction::CallMethod { ref method, .. } if method == method_name => true, _ => false }).unwrap();
-    let encoded = receipt.results.swap_remove(instruction_index).unwrap().unwrap().encoded;
+    let instruction_index = receipt
+        .transaction
+        .instructions
+        .iter()
+        .position(|i| match i {
+            Instruction::CallMethod { ref method, .. } if method == method_name => true,
+            _ => false,
+        })
+        .unwrap();
+    let encoded = receipt
+        .results
+        .swap_remove(instruction_index)
+        .unwrap()
+        .unwrap()
+        .encoded;
     scrypto_decode(&encoded).unwrap()
 }
