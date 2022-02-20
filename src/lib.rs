@@ -622,18 +622,13 @@ pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprin
         .instructions
         .iter()
         .position(|i| match i {
-            Instruction::CallFunction {
+            ValidatedInstruction::CallFunction {
                 ref blueprint_name, ..
             } if blueprint_name == target_blueprint_name => true,
             _ => false,
         })
         .unwrap();
-    let encoded = receipt
-        .results
-        .swap_remove(instruction_index)
-        .unwrap()
-        .unwrap()
-        .encoded;
+    let encoded = receipt.outputs.swap_remove(instruction_index).raw;
     scrypto_decode(&encoded).unwrap()
 }
 
@@ -678,15 +673,10 @@ pub fn return_of_call_method<T: Decode>(receipt: &mut Receipt, method_name: &str
         .instructions
         .iter()
         .position(|i| match i {
-            Instruction::CallMethod { ref method, .. } if method == method_name => true,
+            ValidatedInstruction::CallMethod { ref method, .. } if method == method_name => true,
             _ => false,
         })
         .unwrap();
-    let encoded = receipt
-        .results
-        .swap_remove(instruction_index)
-        .unwrap()
-        .unwrap()
-        .encoded;
+    let encoded = receipt.outputs.swap_remove(instruction_index).raw;
     scrypto_decode(&encoded).unwrap()
 }
