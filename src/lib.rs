@@ -569,7 +569,7 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
             .run(
                 TransactionBuilder::new(&self.executor)
                     .withdraw_from_account(
-                        &ResourceAmount::Fungible {
+                        &Resource::Fungible {
                             amount,
                             resource_address: resource_def.address(),
                         },
