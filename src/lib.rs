@@ -652,20 +652,21 @@ pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprin
 ///
 /// env.publish_package(
 ///     "package",
-///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+///     include_code!("../tests/assets/hello-world", "hello_world")
 /// );
 ///
 /// env.create_user("test user");
 /// env.acting_as("test user");
 ///
-/// const BLUEPRINT: &str = "GumballMachine";
-/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["0.6".to_owned()]);
-/// assert!(receipt.success);
+/// const BLUEPRINT: &str = "Hello";
+/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["42".to_owned()]);
+/// assert!(receipt.result.is_ok());
 /// let component: Component = return_of_call_function(&mut receipt, BLUEPRINT);
 
-/// let mut receipt = env.call_method(&component.address(), "get_price", vec![]);
-/// assert!(receipt.success);
-/// let ret: Decimal = return_of_call_method(&mut receipt, "get_price");
+/// let mut receipt = env.call_method(&component.address(), "update_state", vec!["77".to_owned()]);
+/// assert!(receipt.result.is_ok());
+/// let ret: u32 = return_of_call_method(&mut receipt, "update_state");
+/// assert!(ret == 42);
 /// ```
 pub fn return_of_call_method<T: Decode>(receipt: &mut Receipt, method_name: &str) -> T {
     let instruction_index = receipt
