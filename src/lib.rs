@@ -458,18 +458,38 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
             .unwrap()
     }
 
-    fn get_vault_info(ledger: &L, vid: Vid) -> (Address, Decimal) {
-        let vault = ledger.get_vault(vid).unwrap();
-        let amount = vault.amount(SuperUser).unwrap();
-        let resource_def_address = vault.resource_address(SuperUser).unwrap();
+    fn get_vault_info(ledger: &L, component_address: &Address, vid: &Vid) -> (Address, Decimal) {
+        let vault = ledger.get_vault(&component_address, vid).unwrap();
+        let amount = vault.amount();
+        let resource_def_address = vault.resource_address();
 
         (resource_def_address, amount)
+    }
+
+    fn get_lazymap_info(
+        ledger: &L,
+        component_address: &Address,
+        id: &Mid,
+    ) -> Vec<(Address, Decimal)> {
+        let lazy_map = ledger.get_lazy_map(component_address, id).unwrap();
+        lazy_map
+            .map()
+            .iter()
+            .flat_map(|(_, data)| {
+                let validated_data = validate_data(data).unwrap();
+                validated_data
+                    .vaults
+                    .iter()
+                    .map(|vid| TestEnv::get_vault_info(ledger, component_address, vid))
+                    .collect::<Vec<(Address, Decimal)>>()
+            })
+            .collect()
     }
 
     /// Returns the amount of the resource for the component/account
     /// # Arguments
     ///
-    /// * `component`    - The Address of the component that holds the resource
+    /// * `component_address`    - The Address of the component that holds the resource
     /// * `resource_def` - The Address that holds the resource
     ///
     /// # Examples
@@ -485,16 +505,14 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
     /// let amount = env.get_amount_for_rd(user.account, RADIX_TOKEN);  
     /// assert!( amount == 1000000.into() );
     /// ```
-    pub fn get_amount_for_rd(&mut self, component: Address, resource_def: Address) -> Decimal {
-        let ledger = self.executor.ledger();
-        let mut vids: Vec<Vid> = Vec::new();
-        let component = ledger.get_component(component).unwrap();
-        let state = component.state(SuperUser).unwrap();
-        format_data_with_ledger(&state, ledger, &mut vids).unwrap();
-
-        for vid in vids {
-            let (resource_def_address, amount) = TestEnv::get_vault_info(ledger, vid);
-            if resource_def_address == resource_def {
+    pub fn get_amount_for_rd(
+        &mut self,
+        component_address: Address,
+        resource_def: Address,
+    ) -> Decimal {
+        let vaults = self.get_account_vaults(component_address);
+        for (address, amount) in vaults {
+            if address == resource_def {
                 return amount;
             }
         }
@@ -505,8 +523,8 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
     /// Returns a HashMap with the addresses of the vaults and their amounts. Works with a component or account.
     /// # Arguments
     ///
-    /// * `ledger`   - A reference to the InMemoryLedger
-    /// * `address`  - The Address of the component
+    /// * `ledger`   - A reference to the InMemorySubstateStore
+    /// * `component_address`  - The Address of the component
     ///
     /// # Examples
     /// ```
@@ -527,14 +545,15 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
     ///     }
     /// }
     /// ```
-    pub fn get_account_vaults(&mut self, address: Address) -> HashMap<Address, Decimal> {
-        let mut vids: Vec<Vid> = Vec::new();
+    pub fn get_account_vaults(&mut self, component_address: Address) -> HashMap<Address, Decimal> {
         let ledger = self.executor.ledger();
-        let component = ledger.get_component(address).unwrap();
-        let state = component.state(SuperUser).unwrap();
-        format_data_with_ledger(&state, ledger, &mut vids).unwrap();
-        vids.drain(..)
-            .map(|vid| TestEnv::get_vault_info(ledger, vid))
+        let component = ledger.get_component(component_address).unwrap();
+        let state = component.state();
+        let validated_data = validate_data(state).unwrap();
+        validated_data
+            .lazy_maps
+            .iter()
+            .flat_map(|mid| TestEnv::get_lazymap_info(ledger, &component_address, &mid))
             .collect()
     }
 
