@@ -62,7 +62,22 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
     /// let mut env = TestEnv::new(&mut ledger);
     /// ```
     pub fn new(ledger: &'a mut L) -> Self {
-        let executor = TransactionExecutor::new(ledger, 0, 0);
+        let executor = TransactionExecutor::new(ledger, false);
+        let users: HashMap<String, User> = HashMap::new();
+        let packages: HashMap<String, Address> = HashMap::new();
+
+        Self {
+            executor,
+            users,
+            current_user: None,
+            packages,
+            current_package: None,
+        }
+    }
+
+    /// Returns a test environment instance exactly like `new` but with a tracing executor
+    pub fn new_with_tracing(ledger: &'a mut L) -> Self {
+        let executor = TransactionExecutor::new(ledger, true);
         let users: HashMap<String, User> = HashMap::new();
         let packages: HashMap<String, Address> = HashMap::new();
 
@@ -338,7 +353,6 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
                     .deposit_all_buckets(user.account)
                     .build(vec![user.key])
                     .unwrap(),
-                false,
             )
             .unwrap();
 
@@ -390,7 +404,6 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
                     .deposit_all_buckets(user.account)
                     .build(vec![user.key])
                     .unwrap(),
-                false,
             )
             .unwrap()
     }
@@ -444,7 +457,6 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
                     .deposit_all_buckets(user.account)
                     .build(vec![user.key])
                     .unwrap(),
-                true,
             )
             .unwrap()
     }
@@ -570,7 +582,6 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
                     .deposit_all_buckets(to_user.account)
                     .build(vec![user.key])
                     .unwrap(),
-                false,
             )
             .unwrap();
 
