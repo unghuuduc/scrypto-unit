@@ -9,10 +9,10 @@
 extern crate radix_engine;
 extern crate scrypto;
 
-use radix_engine::ledger::*;
-use radix_engine::model::Actor::SuperUser;
+use radix_engine::engine::validate_data;
+use radix_engine::ledger::SubstateStore;
+use radix_engine::model::{Receipt, ValidatedInstruction};
 use radix_engine::transaction::*;
-use radix_engine::utils::*;
 use sbor::Decode;
 use scrypto::prelude::*;
 
