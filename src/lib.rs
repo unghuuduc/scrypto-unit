@@ -20,12 +20,12 @@ use scrypto::prelude::*;
 /// The user account.
 pub struct User {
     /// The user's public key.
-    pub key: Address,
+    pub key: EcdsaPublicKey,
     /// The user's account address.
     pub account: Address,
 }
 /// Represents a test environment.
-pub struct TestEnv<'a, L: Ledger> {
+pub struct TestEnv<'a, L: SubstateStore> {
     /// The transaction executioner.
     pub executor: TransactionExecutor<'a, L>,
     /// The users of the test environment.
@@ -38,7 +38,7 @@ pub struct TestEnv<'a, L: Ledger> {
     pub current_package: Option<Address>,
 }
 
-impl<'a, L: Ledger> TestEnv<'a, L> {
+impl<'a, L: SubstateStore> TestEnv<'a, L> {
     /// Returns a test environment instance with the following fields:
     ///
     /// * `executor` - The transaction executioner.
@@ -58,7 +58,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// ```
     pub fn new(ledger: &'a mut L) -> Self {
@@ -89,7 +89,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.publish_package(
@@ -123,7 +123,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.publish_package(
@@ -153,7 +153,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.publish_package(
@@ -183,7 +183,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.create_user("test user");
@@ -218,7 +218,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.create_user("test user");
@@ -245,7 +245,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.create_user("test user");
@@ -270,7 +270,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// let user = env.create_user("acc1");
@@ -295,7 +295,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.publish_package(
@@ -320,9 +320,9 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// # Examples
     /// ```
     /// use scrypto_unit::*;
-    /// use radix_engine::ledger::InMemoryLedger;
+    /// use radix_engine::ledger::InMemorySubstateStore;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// env.create_user("acc1");
     /// let token = env.create_token(10000.into());
@@ -358,7 +358,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// env.create_user("acc1");
     /// env.publish_package(
@@ -408,7 +408,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.create_user("acc1");
@@ -469,7 +469,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// let user = env.create_user("acc1");
@@ -505,7 +505,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// let user = env.create_user("acc1");
@@ -539,9 +539,9 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// # Examples
     /// ```
     /// use scrypto_unit::*;
-    /// use radix_engine::ledger::InMemoryLedger;
+    /// use radix_engine::ledger::InMemorySubstateStore;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// env.create_user("user1");
     /// let token = env.create_token(10000.into());
@@ -593,7 +593,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
 /// use radix_engine::ledger::*;
 /// use scrypto::prelude::*;
 ///
-/// let mut ledger = InMemoryLedger::with_bootstrap();
+/// let mut ledger = InMemorySubstateStore::with_bootstrap();
 /// let mut env = TestEnv::new(&mut ledger);
 ///
 /// env.publish_package(
@@ -645,7 +645,7 @@ pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprin
 /// use radix_engine::ledger::*;
 /// use scrypto::prelude::*;
 ///
-/// let mut ledger = InMemoryLedger::with_bootstrap();
+/// let mut ledger = InMemorySubstateStore::with_bootstrap();
 /// let mut env = TestEnv::new(&mut ledger);
 ///
 /// env.publish_package(
