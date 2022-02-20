@@ -113,7 +113,7 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
     /// );
     /// ```
     pub fn publish_package(&mut self, name: &str, package: &[u8]) -> &mut Self {
-        let package_addr = self.executor.publish_package(package);
+        let package_addr = self.executor.publish_package(package).unwrap();
         self.packages.insert(String::from(name), package_addr);
 
         //If first package set as default
@@ -380,7 +380,7 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
     ///     include_code!("../tests/assets/hello-world", "hello_world")
     /// );
     /// let receipt = env.call_function("Hello", "new", vec!["1".to_owned()]);
-    /// assert!(receipt.success);
+    /// assert!(receipt.result.is_ok());
     /// ```
     pub fn call_function(
         &mut self,
@@ -431,7 +431,7 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
     /// );
     ///
     /// let receipt = env.call_function("Hello", "new", vec!["1".to_owned()]);
-    /// assert!(receipt.success);
+    /// assert!(receipt.result.is_ok());
     /// let component = receipt.component(0).unwrap();
     ///
     /// let receipt_method = env.call_method(
@@ -439,7 +439,7 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
     ///     "update_state",
     ///     vec!["2".to_owned()]
     /// );
-    /// assert!(receipt_method.success);
+    /// assert!(receipt_method.result.is_ok());
     /// ```
     pub fn call_method(
         &mut self,
@@ -617,7 +617,7 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
 ///
 /// const BLUEPRINT: &str = "Hello";
 /// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["1".to_owned()]);
-/// assert!(receipt.success);
+/// assert!(receipt.result.is_ok());
 /// let ret: Component = return_of_call_function(&mut receipt, BLUEPRINT);
 /// ```
 pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprint_name: &str) -> T {
