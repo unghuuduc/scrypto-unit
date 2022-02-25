@@ -9,10 +9,10 @@
 extern crate radix_engine;
 extern crate scrypto;
 
-use radix_engine::ledger::*;
-use radix_engine::model::Actor::SuperUser;
+use radix_engine::engine::validate_data;
+use radix_engine::ledger::SubstateStore;
+use radix_engine::model::{Receipt, ValidatedInstruction};
 use radix_engine::transaction::*;
-use radix_engine::utils::*;
 use sbor::Decode;
 use scrypto::prelude::*;
 
@@ -20,12 +20,12 @@ use scrypto::prelude::*;
 /// The user account.
 pub struct User {
     /// The user's public key.
-    pub key: Address,
+    pub key: EcdsaPublicKey,
     /// The user's account address.
     pub account: Address,
 }
 /// Represents a test environment.
-pub struct TestEnv<'a, L: Ledger> {
+pub struct TestEnv<'a, L: SubstateStore> {
     /// The transaction executioner.
     pub executor: TransactionExecutor<'a, L>,
     /// The users of the test environment.
@@ -38,7 +38,7 @@ pub struct TestEnv<'a, L: Ledger> {
     pub current_package: Option<Address>,
 }
 
-impl<'a, L: Ledger> TestEnv<'a, L> {
+impl<'a, L: SubstateStore> TestEnv<'a, L> {
     /// Returns a test environment instance with the following fields:
     ///
     /// * `executor` - The transaction executioner.
@@ -58,11 +58,26 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// ```
     pub fn new(ledger: &'a mut L) -> Self {
-        let executor = TransactionExecutor::new(ledger, 0, 0);
+        let executor = TransactionExecutor::new(ledger, false);
+        let users: HashMap<String, User> = HashMap::new();
+        let packages: HashMap<String, Address> = HashMap::new();
+
+        Self {
+            executor,
+            users,
+            current_user: None,
+            packages,
+            current_package: None,
+        }
+    }
+
+    /// Returns a test environment instance exactly like `new` but with a tracing executor
+    pub fn new_with_tracing(ledger: &'a mut L) -> Self {
+        let executor = TransactionExecutor::new(ledger, true);
         let users: HashMap<String, User> = HashMap::new();
         let packages: HashMap<String, Address> = HashMap::new();
 
@@ -89,7 +104,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.publish_package(
@@ -98,7 +113,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// );
     /// ```
     pub fn publish_package(&mut self, name: &str, package: &[u8]) -> &mut Self {
-        let package_addr = self.executor.publish_package(package);
+        let package_addr = self.executor.publish_package(package).unwrap();
         self.packages.insert(String::from(name), package_addr);
 
         //If first package set as default
@@ -123,7 +138,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.publish_package(
@@ -153,7 +168,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.publish_package(
@@ -183,7 +198,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.create_user("test user");
@@ -218,7 +233,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.create_user("test user");
@@ -245,7 +260,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.create_user("test user");
@@ -270,7 +285,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// let user = env.create_user("acc1");
@@ -295,7 +310,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.publish_package(
@@ -320,9 +335,9 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// # Examples
     /// ```
     /// use scrypto_unit::*;
-    /// use radix_engine::ledger::InMemoryLedger;
+    /// use radix_engine::ledger::InMemorySubstateStore;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// env.create_user("acc1");
     /// let token = env.create_token(10000.into());
@@ -334,11 +349,9 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             .run(
                 TransactionBuilder::new(&self.executor)
                     .new_token_fixed(HashMap::new(), max_supply.into())
-                    .drop_all_bucket_refs()
-                    .deposit_all_buckets(user.account)
+                    .call_method_with_all_resources(user.account, "deposit_batch")
                     .build(vec![user.key])
                     .unwrap(),
-                false,
             )
             .unwrap();
 
@@ -358,7 +371,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// env.create_user("acc1");
     /// env.publish_package(
@@ -366,7 +379,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///     include_code!("../tests/assets/hello-world", "hello_world")
     /// );
     /// let receipt = env.call_function("Hello", "new", vec!["1".to_owned()]);
-    /// assert!(receipt.success);
+    /// assert!(receipt.result.is_ok());
     /// ```
     pub fn call_function(
         &mut self,
@@ -386,11 +399,9 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
                         params,
                         Some(user.account),
                     )
-                    .drop_all_bucket_refs()
-                    .deposit_all_buckets(user.account)
+                    .call_method_with_all_resources(user.account, "deposit_batch")
                     .build(vec![user.key])
                     .unwrap(),
-                false,
             )
             .unwrap()
     }
@@ -408,7 +419,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// env.create_user("acc1");
@@ -418,7 +429,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// );
     ///
     /// let receipt = env.call_function("Hello", "new", vec!["1".to_owned()]);
-    /// assert!(receipt.success);
+    /// assert!(receipt.result.is_ok());
     /// let component = receipt.component(0).unwrap();
     ///
     /// let receipt_method = env.call_method(
@@ -426,7 +437,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///     "update_state",
     ///     vec!["2".to_owned()]
     /// );
-    /// assert!(receipt_method.success);
+    /// assert!(receipt_method.result.is_ok());
     /// ```
     pub fn call_method(
         &mut self,
@@ -440,27 +451,45 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             .run(
                 TransactionBuilder::new(&self.executor)
                     .call_method(*component, method_name, params, Some(user.account))
-                    .drop_all_bucket_refs()
-                    .deposit_all_buckets(user.account)
+                    .call_method_with_all_resources(user.account, "deposit_batch")
                     .build(vec![user.key])
                     .unwrap(),
-                true,
             )
             .unwrap()
     }
 
-    fn get_vault_info(ledger: &L, vid: Vid) -> (Address, Decimal) {
-        let vault = ledger.get_vault(vid).unwrap();
-        let amount = vault.amount(SuperUser).unwrap();
-        let resource_def_address = vault.resource_address(SuperUser).unwrap();
+    fn get_vault_info(ledger: &L, component_address: &Address, vid: &Vid) -> (Address, Decimal) {
+        let vault = ledger.get_vault(&component_address, vid).unwrap();
+        let amount = vault.amount();
+        let resource_def_address = vault.resource_address();
 
         (resource_def_address, amount)
+    }
+
+    fn get_lazymap_info(
+        ledger: &L,
+        component_address: &Address,
+        id: &Mid,
+    ) -> Vec<(Address, Decimal)> {
+        let lazy_map = ledger.get_lazy_map(component_address, id).unwrap();
+        lazy_map
+            .map()
+            .iter()
+            .flat_map(|(_, data)| {
+                let validated_data = validate_data(data).unwrap();
+                validated_data
+                    .vaults
+                    .iter()
+                    .map(|vid| TestEnv::get_vault_info(ledger, component_address, vid))
+                    .collect::<Vec<(Address, Decimal)>>()
+            })
+            .collect()
     }
 
     /// Returns the amount of the resource for the component/account
     /// # Arguments
     ///
-    /// * `component`    - The Address of the component that holds the resource
+    /// * `component_address`    - The Address of the component that holds the resource
     /// * `resource_def` - The Address that holds the resource
     ///
     /// # Examples
@@ -469,23 +498,21 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// let user = env.create_user("acc1");
     /// let amount = env.get_amount_for_rd(user.account, RADIX_TOKEN);  
     /// assert!( amount == 1000000.into() );
     /// ```
-    pub fn get_amount_for_rd(&mut self, component: Address, resource_def: Address) -> Decimal {
-        let ledger = self.executor.ledger();
-        let mut vids: Vec<Vid> = Vec::new();
-        let component = ledger.get_component(component).unwrap();
-        let state = component.state(SuperUser).unwrap();
-        format_data_with_ledger(&state, ledger, &mut vids).unwrap();
-
-        for vid in vids {
-            let (resource_def_address, amount) = TestEnv::get_vault_info(ledger, vid);
-            if resource_def_address == resource_def {
+    pub fn get_amount_for_rd(
+        &mut self,
+        component_address: Address,
+        resource_def: Address,
+    ) -> Decimal {
+        let vaults = self.get_account_vaults(component_address);
+        for (address, amount) in vaults {
+            if address == resource_def {
                 return amount;
             }
         }
@@ -496,8 +523,8 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// Returns a HashMap with the addresses of the vaults and their amounts. Works with a component or account.
     /// # Arguments
     ///
-    /// * `ledger`   - A reference to the InMemoryLedger
-    /// * `address`  - The Address of the component
+    /// * `ledger`   - A reference to the InMemorySubstateStore
+    /// * `component_address`  - The Address of the component
     ///
     /// # Examples
     /// ```
@@ -505,7 +532,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// use radix_engine::ledger::*;
     /// use scrypto::prelude::*;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     ///
     /// let user = env.create_user("acc1");
@@ -518,14 +545,15 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     ///     }
     /// }
     /// ```
-    pub fn get_account_vaults(&mut self, address: Address) -> HashMap<Address, Decimal> {
-        let mut vids: Vec<Vid> = Vec::new();
+    pub fn get_account_vaults(&mut self, component_address: Address) -> HashMap<Address, Decimal> {
         let ledger = self.executor.ledger();
-        let component = ledger.get_component(address).unwrap();
-        let state = component.state(SuperUser).unwrap();
-        format_data_with_ledger(&state, ledger, &mut vids).unwrap();
-        vids.drain(..)
-            .map(|vid| TestEnv::get_vault_info(ledger, vid))
+        let component = ledger.get_component(component_address).unwrap();
+        let state = component.state();
+        let validated_data = validate_data(state).unwrap();
+        validated_data
+            .lazy_maps
+            .iter()
+            .flat_map(|mid| TestEnv::get_lazymap_info(ledger, &component_address, &mid))
             .collect()
     }
 
@@ -539,9 +567,9 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
     /// # Examples
     /// ```
     /// use scrypto_unit::*;
-    /// use radix_engine::ledger::InMemoryLedger;
+    /// use radix_engine::ledger::InMemorySubstateStore;
     ///
-    /// let mut ledger = InMemoryLedger::with_bootstrap();
+    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
     /// let mut env = TestEnv::new(&mut ledger);
     /// env.create_user("user1");
     /// let token = env.create_token(10000.into());
@@ -560,17 +588,15 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
             .run(
                 TransactionBuilder::new(&self.executor)
                     .withdraw_from_account(
-                        &ResourceAmount::Fungible {
+                        &Resource::Fungible {
                             amount,
                             resource_address: resource_def.address(),
                         },
                         user.account,
                     )
-                    .drop_all_bucket_refs()
-                    .deposit_all_buckets(to_user.account)
+                    .call_method_with_all_resources(to_user.account, "deposit_batch")
                     .build(vec![user.key])
                     .unwrap(),
-                false,
             )
             .unwrap();
 
@@ -593,7 +619,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
 /// use radix_engine::ledger::*;
 /// use scrypto::prelude::*;
 ///
-/// let mut ledger = InMemoryLedger::with_bootstrap();
+/// let mut ledger = InMemorySubstateStore::with_bootstrap();
 /// let mut env = TestEnv::new(&mut ledger);
 ///
 /// env.publish_package(
@@ -606,7 +632,7 @@ impl<'a, L: Ledger> TestEnv<'a, L> {
 ///
 /// const BLUEPRINT: &str = "Hello";
 /// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["1".to_owned()]);
-/// assert!(receipt.success);
+/// assert!(receipt.result.is_ok());
 /// let ret: Component = return_of_call_function(&mut receipt, BLUEPRINT);
 /// ```
 pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprint_name: &str) -> T {
@@ -615,18 +641,13 @@ pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprin
         .instructions
         .iter()
         .position(|i| match i {
-            Instruction::CallFunction {
+            ValidatedInstruction::CallFunction {
                 ref blueprint_name, ..
             } if blueprint_name == target_blueprint_name => true,
             _ => false,
         })
         .unwrap();
-    let encoded = receipt
-        .results
-        .swap_remove(instruction_index)
-        .unwrap()
-        .unwrap()
-        .encoded;
+    let encoded = receipt.outputs.swap_remove(instruction_index).raw;
     scrypto_decode(&encoded).unwrap()
 }
 
@@ -635,7 +656,7 @@ pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprin
 ///
 /// * `receipt`  - The name of the package as named in the blueprint
 /// * `method_name` - The name of the method to search for the matching Instruction::CallMethod
-/// 
+///
 /// NOTE: a custom built transaction may have more than one matching call.  This convenience
 ///       function may not work in such cases.
 ///
@@ -645,28 +666,37 @@ pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprin
 /// use radix_engine::ledger::*;
 /// use scrypto::prelude::*;
 ///
-/// let mut ledger = InMemoryLedger::with_bootstrap();
+/// let mut ledger = InMemorySubstateStore::with_bootstrap();
 /// let mut env = TestEnv::new(&mut ledger);
 ///
 /// env.publish_package(
 ///     "package",
-///     include_code!("../../radixdlt-scrypto/examples/core/gumball-machine/")
+///     include_code!("../tests/assets/hello-world", "hello_world")
 /// );
-/// 
+///
 /// env.create_user("test user");
 /// env.acting_as("test user");
-/// 
-/// const BLUEPRINT: &str = "GumballMachine";
-/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["0.6".to_owned()]);
-/// assert!(receipt.success);
+///
+/// const BLUEPRINT: &str = "Hello";
+/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["42".to_owned()]);
+/// assert!(receipt.result.is_ok());
 /// let component: Component = return_of_call_function(&mut receipt, BLUEPRINT);
 
-/// let mut receipt = env.call_method(&component.address(), "get_price", vec![]);
-/// assert!(receipt.success);
-/// let ret: Decimal = return_of_call_method(&mut receipt, "get_price");
+/// let mut receipt = env.call_method(&component.address(), "update_state", vec!["77".to_owned()]);
+/// assert!(receipt.result.is_ok());
+/// let ret: u32 = return_of_call_method(&mut receipt, "update_state");
+/// assert!(ret == 42);
 /// ```
 pub fn return_of_call_method<T: Decode>(receipt: &mut Receipt, method_name: &str) -> T {
-    let instruction_index = receipt.transaction.instructions.iter().position(|i| match i { Instruction::CallMethod { ref method, .. } if method == method_name => true, _ => false }).unwrap();
-    let encoded = receipt.results.swap_remove(instruction_index).unwrap().unwrap().encoded;
+    let instruction_index = receipt
+        .transaction
+        .instructions
+        .iter()
+        .position(|i| match i {
+            ValidatedInstruction::CallMethod { ref method, .. } if method == method_name => true,
+            _ => false,
+        })
+        .unwrap();
+    let encoded = receipt.outputs.swap_remove(instruction_index).raw;
     scrypto_decode(&encoded).unwrap()
 }
