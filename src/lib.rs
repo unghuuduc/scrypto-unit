@@ -458,19 +458,26 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
             .unwrap()
     }
 
-    fn get_vault_info(ledger: &L, component_address: &Address, vid: &Vid) -> (Address, Decimal) {
+    fn get_vault_info(ledger: &L, component_address: &Address, vid: &Vid) -> (Address, Contents) {
         let vault = ledger.get_vault(&component_address, vid).unwrap();
-        let amount = vault.amount();
+
+        let resource_def = ledger.get_resource_def(vault.resource_address()).unwrap();
+        let contents = match resource_def.resource_type() {
+            ResourceType::Fungible { .. } => Contents::Amount(vault.amount()),
+            ResourceType::NonFungible => {
+                Contents::NonFungibleKeys(vault.get_non_fungible_ids().unwrap())
+            }
+        };
         let resource_def_address = vault.resource_address();
 
-        (resource_def_address, amount)
+        (resource_def_address, contents)
     }
 
     fn get_lazymap_info(
         ledger: &L,
         component_address: &Address,
         id: &Mid,
-    ) -> Vec<(Address, Decimal)> {
+    ) -> Vec<(Address, Contents)> {
         let lazy_map = ledger.get_lazy_map(component_address, id).unwrap();
         lazy_map
             .map()
@@ -481,7 +488,7 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
                     .vaults
                     .iter()
                     .map(|vid| TestEnv::get_vault_info(ledger, component_address, vid))
-                    .collect::<Vec<(Address, Decimal)>>()
+                    .collect::<Vec<(Address, Contents)>>()
             })
             .collect()
     }
@@ -511,41 +518,34 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
         resource_def: Address,
     ) -> Decimal {
         let vaults = self.get_account_vaults(component_address);
-        for (address, amount) in vaults {
+        for (address, contents) in vaults {
             if address == resource_def {
-                return amount;
+                match contents {
+                    Contents::Amount(amount) => return amount,
+                    _ => panic!("Cannot get amount: resource {} is not fungible", address),
+                }
             }
         }
 
         0.into()
     }
 
-    /// Returns a HashMap with the addresses of the vaults and their amounts. Works with a component or account.
-    /// # Arguments
-    ///
-    /// * `ledger`   - A reference to the InMemorySubstateStore
-    /// * `component_address`  - The Address of the component
-    ///
-    /// # Examples
-    /// ```
-    /// use scrypto_unit::*;
-    /// use radix_engine::ledger::*;
-    /// use scrypto::prelude::*;
-    ///
-    /// let mut ledger = InMemorySubstateStore::with_bootstrap();
-    /// let mut env = TestEnv::new(&mut ledger);
-    ///
-    /// let user = env.create_user("acc1");
-    /// let vaults = env.get_account_vaults(user.account);  
-    ///
-    /// for (addr, amt) in vaults {
-    ///     println!("Address: {}, Amount: {}", addr, amt);
-    ///     if addr == RADIX_TOKEN {
-    ///         assert!(amt == 1000000.into());
-    ///     }
-    /// }
-    /// ```
-    pub fn get_account_vaults(&mut self, component_address: Address) -> HashMap<Address, Decimal> {
+
+    pub fn get_non_fungible_keys_for_rd(&mut self, component_address: Address, resource_def: Address) -> Vec<NonFungibleKey> {
+        let vaults = self.get_account_vaults(component_address);
+        for (address, contents) in vaults {
+            if address == resource_def {
+                match contents {
+                    Contents::NonFungibleKeys(keys) => return keys,
+                    _ => panic!("Cannot get amount: resource {} is not fungible", address),
+                }
+            }
+        }
+
+        Vec::new()
+    }
+    
+    pub fn get_account_vaults(&mut self, component_address: Address) -> HashMap<Address, Contents> {
         let ledger = self.executor.ledger();
         let component = ledger.get_component(component_address).unwrap();
         let state = component.state();
@@ -602,6 +602,11 @@ impl<'a, L: SubstateStore> TestEnv<'a, L> {
 
         receipt
     }
+}
+
+pub enum Contents {
+    Amount(Decimal),
+    NonFungibleKeys(Vec<NonFungibleKey>),
 }
 
 /// Decodes the return value from a blueprint function within a transaction from the receipt
