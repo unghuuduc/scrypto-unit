@@ -455,7 +455,8 @@ impl<'l, L: SubstateStore> TestEnv<'l, L> {
         receipt
     }
 
-    pub fn call_method_auth(&mut self,
+    pub fn call_method_auth(
+        &mut self,
         component: &ComponentAddress,
         method_name: &str,
         admin_badge: &ResourceAddress,
@@ -465,7 +466,6 @@ impl<'l, L: SubstateStore> TestEnv<'l, L> {
         let transaction = TransactionBuilder::new()
             .call_method(user.account, "create_proof", args![admin_badge.to_vec()])
             .call_method(*component, method_name, params)
-            .call_method_with_all_resources(user.account, "deposit_batch")
             .build(self.executor.get_nonce([user.key]))
             .sign([private_key]);
         let receipt = self.executor.validate_and_execute(&transaction).unwrap();
