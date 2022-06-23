@@ -441,13 +441,13 @@ impl<'l, L: SubstateStore> TestEnv<'l, L> {
     /// ```
     pub fn call_method(
         &mut self,
-        component: &ComponentAddress,
+        component: ComponentAddress,
         method_name: &str,
         params: Vec<Vec<u8>>,
     ) -> Receipt {
         let (user, private_key) = self.get_current_user();
         let transaction = TransactionBuilder::new()
-            .call_method(*component, method_name, params)
+            .call_method(component, method_name, params)
             .call_method_with_all_resources(user.account, "deposit_batch")
             .build(self.executor.get_nonce([user.key]))
             .sign([private_key]);
@@ -457,15 +457,16 @@ impl<'l, L: SubstateStore> TestEnv<'l, L> {
 
     pub fn call_method_auth(
         &mut self,
-        component: &ComponentAddress,
+        component: ComponentAddress,
         method_name: &str,
-        admin_badge: &ResourceAddress,
+        admin_badge: ResourceAddress,
         params: Vec<Vec<u8>>,
     ) -> Receipt {
         let (user, private_key) = self.get_current_user();
         let transaction = TransactionBuilder::new()
-            .call_method(user.account, "create_proof", args![admin_badge.to_vec()])
-            .call_method(*component, method_name, params)
+            .call_method(user.account, "create_proof", args![admin_badge])
+            .call_method(component, method_name, params)
+            .call_method_with_all_resources(user.account, "deposit_batch")
             .build(self.executor.get_nonce([user.key]))
             .sign([private_key]);
         let receipt = self.executor.validate_and_execute(&transaction).unwrap();
