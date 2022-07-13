@@ -11,7 +11,7 @@ extern crate scrypto;
 
 //use radix_engine::engine::validate_data;
 use radix_engine::ledger::SubstateStore;
-use radix_engine::model::Receipt; //, ValidatedInstruction};
+use radix_engine::model::{Receipt, ValidatedInstruction}; //, ValidatedInstruction};
 use radix_engine::transaction::*;
 //use sbor::Decode;
 //use scrypto::{prelude::*, component};
@@ -631,106 +631,103 @@ impl<'l, L: SubstateStore> TestEnv<'l, L> {
     }
 }
 
-// pub enum Contents {
-//     Amount(Decimal),
-//     NonFungibleIds(Vec<NonFungibleId>),
-// }
+pub enum Contents {
+    Amount(Decimal),
+    NonFungibleIds(Vec<NonFungibleId>),
+}
 
-// TODO: dropped v0.4.1
-// /// Decodes the return value from a blueprint function within a transaction from the receipt
-// /// # Arguments
-// ///
-// /// * `receipt`  - The name of the package as named in the blueprint
-// /// * `blueprint_name` - The name of the blueprint to search for the matching Instruction::CallFunction
-// ///
-// /// NOTE: a custom built transaction may have more than one matching call.  This convenience
-// ///       function may not work in such cases.
-// ///
-// /// # Examples
-// /// ```
-// /// use scrypto_unit::*;
-// /// use radix_engine::ledger::*;
-// /// use scrypto::prelude::*;
-// ///
-// /// let mut ledger = InMemorySubstateStore::with_bootstrap();
-// /// let mut env = TestEnv::new(&mut ledger);
-// ///
-// /// env.publish_package(
-// ///     "package",
-// ///     include_code!("../tests/assets/hello-world", "hello_world")
-// /// );
-// ///
-// /// env.create_user("test user");
-// /// env.acting_as("test user");
-// ///
-// /// const BLUEPRINT: &str = "Hello";
-// /// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["1".to_owned()]);
-// /// assert!(receipt.result.is_ok());
-// /// let ret: Component = return_of_call_function(&mut receipt, BLUEPRINT);
-// /// ```
-// pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprint_name: &str) -> T {
-//     let instruction_index = receipt
-//         .transaction
-//         .instructions
-//         .iter()
-//         .position(|i| match i {
-//             ValidatedInstruction::CallFunction {
-//                 ref blueprint_name, ..
-//             } if blueprint_name == target_blueprint_name => true,
-//             _ => false,
-//         })
-//         .unwrap();
-//     let encoded = receipt.outputs.swap_remove(instruction_index).raw;
-//     scrypto_decode(&encoded).unwrap()
-// }
+/// Decodes the return value from a blueprint function within a transaction from the receipt
+/// # Arguments
+///
+/// * `receipt`  - The name of the package as named in the blueprint
+/// * `blueprint_name` - The name of the blueprint to search for the matching Instruction::CallFunction
+///
+/// NOTE: a custom built transaction may have more than one matching call.  This convenience
+///       function may not work in such cases.
+///
+/// # Examples
+/// ```
+/// use scrypto_unit::*;
+/// use radix_engine::ledger::*;
+/// use scrypto::prelude::*;
+///
+/// let mut ledger = InMemorySubstateStore::with_bootstrap();
+/// let mut env = TestEnv::new(&mut ledger);
+///
+/// env.publish_package(
+///     "package",
+///     include_code!("../tests/assets/hello-world", "hello_world")
+/// );
+///
+/// env.create_user("test user");
+/// env.acting_as("test user");
+///
+/// const BLUEPRINT: &str = "Hello";
+/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["1".to_owned()]);
+/// assert!(receipt.result.is_ok());
+/// let ret: Component = return_of_call_function(&mut receipt, BLUEPRINT);
+/// ```
+pub fn return_of_call_function<T: Decode>(receipt: &mut Receipt, target_blueprint_name: &str) -> T {
+    let instruction_index = receipt
+        .validated_transaction
+        .instructions
+        .iter()
+        .position(|i| match i {
+            ValidatedInstruction::CallFunction {
+                ref blueprint_name, ..
+            } if blueprint_name == target_blueprint_name => true,
+            _ => false,
+        })
+        .unwrap();
+    let encoded = receipt.outputs.swap_remove(instruction_index).raw;
+    scrypto_decode(&encoded).unwrap()
+}
 
-// TODO: dropped v0.4.1
-// /// Decodes the return value from a component method call within a transaction from the receipt
-// /// # Arguments
-// ///
-// /// * `receipt`  - The name of the package as named in the blueprint
-// /// * `method_name` - The name of the method to search for the matching Instruction::CallMethod
-// ///
-// /// NOTE: a custom built transaction may have more than one matching call.  This convenience
-// ///       function may not work in such cases.
-// ///
-// /// # Examples
-// /// ```
-// /// use scrypto_unit::*;
-// /// use radix_engine::ledger::*;
-// /// use scrypto::prelude::*;
-// ///
-// /// let mut ledger = InMemorySubstateStore::with_bootstrap();
-// /// let mut env = TestEnv::new(&mut ledger);
-// ///
-// /// env.publish_package(
-// ///     "package",
-// ///     include_code!("../tests/assets/hello-world", "hello_world")
-// /// );
-// ///
-// /// env.create_user("test user");
-// /// env.acting_as("test user");
-// ///
-// /// const BLUEPRINT: &str = "Hello";
-// /// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["42".to_owned()]);
-// /// assert!(receipt.result.is_ok());
-// /// let component: Component = return_of_call_function(&mut receipt, BLUEPRINT);
-
-// /// let mut receipt = env.call_method(&component.address(), "update_state", vec!["77".to_owned()]);
-// /// assert!(receipt.result.is_ok());
-// /// let ret: u32 = return_of_call_method(&mut receipt, "update_state");
-// /// assert!(ret == 42);
-// /// ```
-// pub fn return_of_call_method<T: Decode>(receipt: &mut Receipt, method_name: &str) -> T {
-//     let instruction_index = receipt
-//         .transaction
-//         .instructions
-//         .iter()
-//         .position(|i| match i {
-//             ValidatedInstruction::CallMethod { ref method, .. } if method == method_name => true,
-//             _ => false,
-//         })
-//         .unwrap();
-//     let encoded = receipt.outputs.swap_remove(instruction_index).raw;
-//     scrypto_decode(&encoded).unwrap()
-// }
+/// Decodes the return value from a component method call within a transaction from the receipt
+/// # Arguments
+///
+/// * `receipt`  - The name of the package as named in the blueprint
+/// * `method_name` - The name of the method to search for the matching Instruction::CallMethod
+///
+/// NOTE: a custom built transaction may have more than one matching call.  This convenience
+///       function may not work in such cases.
+///
+/// # Examples
+/// ```
+/// use scrypto_unit::*;
+/// use radix_engine::ledger::*;
+/// use scrypto::prelude::*;
+///
+/// let mut ledger = InMemorySubstateStore::with_bootstrap();
+/// let mut env = TestEnv::new(&mut ledger);
+///
+/// env.publish_package(
+///     "package",
+///     include_code!("../tests/assets/hello-world", "hello_world")
+/// );
+///
+/// env.create_user("test user");
+/// env.acting_as("test user");
+///
+/// const BLUEPRINT: &str = "Hello";
+/// let mut receipt = env.call_function(BLUEPRINT, "new", vec!["42".to_owned()]);
+/// assert!(receipt.result.is_ok());
+/// let component: Component = return_of_call_function(&mut receipt, BLUEPRINT);
+/// let mut receipt = env.call_method(&component.address(), "update_state", vec!["77".to_owned()]);
+/// assert!(receipt.result.is_ok());
+/// let ret: u32 = return_of_call_method(&mut receipt, "update_state");
+/// assert!(ret == 42);
+/// ```
+pub fn return_of_call_method<T: Decode>(receipt: &mut Receipt, method_name: &str) -> T {
+    let instruction_index = receipt
+        .validated_transaction
+        .instructions
+        .iter()
+        .position(|i| match i {
+            ValidatedInstruction::CallMethod { ref method, .. } if method == method_name => true,
+            _ => false,
+        })
+        .unwrap();
+    let encoded = receipt.outputs.swap_remove(instruction_index).raw;
+    scrypto_decode(&encoded).unwrap()
+}
