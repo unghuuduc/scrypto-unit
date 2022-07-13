@@ -121,7 +121,7 @@ impl<'l, L: SubstateStore> TestEnv<'l, L> {
     ///     include_code!("../tests/assets/hello-world", "hello_world")
     /// );
     /// ```
-    pub fn publish_package(&mut self, name: &str, package: Vec<u8>) -> &mut Self {
+    pub fn publish_package(&mut self, name: &str, package: &[u8]) -> &mut Self {
         let package_addr = self.executor.publish_package(package).unwrap();
         self.packages.insert(String::from(name), package_addr);
 
